@@ -1,1 +1,35 @@
-# git-up-or-git-rekt
+## Git Up or Git Rekt
+
+# Author - David Phan
+
+## Overview
+Git Up or Git Rekt is an alarm clock game that assists in waking you up completely.
+
+The user has to fulfill two requirements to turn off the alarm clock:
+* the user must score an X amount of points via a shooting board (i.e. 10 points) 
+* However, in order for the points to count, the user must be stationary on a Wii balance board at all times
+
+## Technology
+* Embedded systems programming AVR microcontrollers in C
+* Universal Synchronous/Asynchronous Receiver/Transmitter (USART) communication
+
+## Components
+* Wii balance board
+* Raspberry Pi 3
+
+* Shooting board (Servant)
+  * Atmega1284 microcontroller
+  * IR sensors
+  * HC-SR04 Ultrasonic sensor
+
+* Alarm clock (Master)
+  * Arduino Uno
+  * DS 1307 RTC (real time clock)
+  * 16x2 LCD display
+  * Speaker
+  * 2 10k resistors
+  * 10k potentiometer
+  
+## High Level Diagram
+![high_level_diagram](https://cloud.githubusercontent.com/assets/15112219/20460105/9e8b904e-ae8d-11e6-85b8-d0a8838487e9.png)
+
