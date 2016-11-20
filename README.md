@@ -31,5 +31,5 @@ The user has to fulfill two requirements to turn off the alarm clock:
   * 10k potentiometer
   
 ## High Level Diagram
-![high_level_diagram](https://cloud.githubusercontent.com/assets/15112219/20460105/9e8b904e-ae8d-11e6-85b8-d0a8838487e9.png)
+![high_level_diagram](https://cloud.githubusercontent.com/assets/15112219/20460127/ce76a72a-ae8e-11e6-8f14-e1fbf3f7f55b.png)
 
