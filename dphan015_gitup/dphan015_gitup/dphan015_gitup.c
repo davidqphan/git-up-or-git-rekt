@@ -11,7 +11,6 @@
  */
 
 #include <avr/io.h>
-
 //FreeRTOS include files
 #include "FreeRTOS.h"
 #include "task.h"
@@ -19,11 +18,14 @@
 #include "usart_ATmega1284.h"
 
 // Create State Machine enumeration here
-enum led_states {INIT, OFF, ON} led_state;
+enum led_states {INIT, WAIT, WAKEUP, READY} led_state;
 
-unsigned char tmpB;
-unsigned char led;
-unsigned char trigger;
+unsigned char led;		// PB4 (0/1) - (not present/present) on board
+unsigned char present;	// present flag sent from Pi
+unsigned char wake_up;	// time to wake up flag sent from Uno
+
+#define RPI 0
+#define UNO 1
 
 void InitFct(){
 	// Initialize State Machines here
@@ -31,61 +33,78 @@ void InitFct(){
 }
 
 void TickFct(){
-	
-	tmpB = ~PINB & 0x01;
-	
 	switch (led_state) { // transitions
 		case INIT:
-		led_state = OFF;
-		break;
+			led = 0x00;
+			led_state = WAIT;
+			break;
+			
+		case WAIT:
+			if (USART_HasReceived(UNO)) {
+				wake_up = USART_Receive(UNO);
+			}
+			
+			if (wake_up == 0x01) {
+				led_state = WAKEUP;
+			}
+			else if (wake_up == 0x00) {
+				led_state = WAIT;
+			}			
+			break;
 		
-		case OFF:
-		if(tmpB == 1){
-			led_state = ON;
-		}
-		else{
-			led_state = OFF;
-		}
-		break;
-		
-		case ON:
-		if(tmpB == 1){
-			led_state = ON;
-		}
-		else{
-			led_state = OFF;
-		}
+		case WAKEUP:
+			USART_Send(wake_up, RPI);	
 
-		break;
-		default:
+			if (USART_HasReceived(RPI)) {
+				present = USART_Receive(RPI);
+			}
+			
+			if (present == 0x01) {
+				led = 0x10;
+				led_state = READY;
+			}
+			else if (present == 0x00) {
+				led = 0x00;
+				led_state = WAKEUP;
+			break;
+			
+		case READY:
+			if (USART_HasReceived(RPI)) {
+				present = USART_Receive(RPI);
+			}
+			
+			if (present == 0x01) {
+				led = 0x10;
+				led_state = READY;
+			}
+			else if (present == 0x00) {
+				led = 0x00;
+				led_state = WAKEUP;
+			}
+			break;
 		
-		break;
+		default:
+			break;
 	}
 	
 	switch (led_state) { // Actions
 		case INIT:
-		led = 0x00;
-		trigger = 0x00;
-		break;
+			break;
 		
-		case OFF:
-		led = 0x00;
-		break;
+		case WAIT:
+			break;
 		
-		case ON:
-		led = 0x01;
-		trigger = 0x01;
-		if(USART_IsSendReady(0)) {
-			USART_Send(trigger,0);
-		}
-		break;
+		case WAKEUP:
+			PORTB = led;
+			break;
+		
+		case READY:
+			PORTB = led;
+			break;
 		
 		default:
-		break;
+			break;
 	}
-	
-	PORTA = led;
-	
 }
 
 void TaskFct()
@@ -106,14 +125,13 @@ void PulseFct(unsigned portBASE_TYPE Priority)
 
 int main(void)
 {
-	DDRA = 0xFF;	PORTA = 0x00;	// LED output
-	DDRB = 0x00;	PORTB = 0xFF;	// IR input
-	
-	initUSART(0);
+	// DDRA = 0xFF;	PORTA = 0x00;	// LED bar to keep score
+	DDRB = 0xFD;	PORTB = 0x02;	// Distance sensor + LED
+	// DDRC = 0x00;	PORTC = 0xFF;	// IR receivers
+	initUSART(RPI);	initUSART(UNO);	// USART0 - pi_atmega	USART1 - atmega_uno
 	
 	PulseFct(1);
 	vTaskStartScheduler();
-	
 	
 	return 0;
 }
