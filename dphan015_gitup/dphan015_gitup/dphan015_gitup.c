@@ -27,12 +27,12 @@ unsigned char wake_up;	// time to wake up flag sent from Uno
 #define RPI 0
 #define UNO 1
 
-void InitFct(){
+void InitFct() {
 	// Initialize State Machines here
 	led_state = INIT;
 }
 
-void TickFct(){
+void TickFct() {
 	switch (led_state) { // transitions
 		case INIT:
 			led = 0x00;
@@ -66,6 +66,7 @@ void TickFct(){
 			else if (present == 0x00) {
 				led = 0x00;
 				led_state = WAKEUP;
+			}
 			break;
 			
 		case READY:
@@ -107,24 +108,20 @@ void TickFct(){
 	}
 }
 
-void TaskFct()
-{
+void TaskFct() {
 	InitFct();
-	for(;;)
-	{
+	while (1) {
 		TickFct();
 		vTaskDelay(1);
 	}
 }
 
-void PulseFct(unsigned portBASE_TYPE Priority)
-{
+void PulseFct(unsigned portBASE_TYPE Priority) {
 	// Create Tasks here
 	xTaskCreate(TaskFct, (signed portCHAR *)"TaskFct", configMINIMAL_STACK_SIZE, NULL, Priority, NULL );
 }
 
-int main(void)
-{
+int main(void) {
 	// DDRA = 0xFF;	PORTA = 0x00;	// LED bar to keep score
 	DDRB = 0xFD;	PORTB = 0x02;	// Distance sensor + LED
 	// DDRC = 0x00;	PORTC = 0xFF;	// IR receivers
