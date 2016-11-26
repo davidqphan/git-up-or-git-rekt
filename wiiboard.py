@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# Credits: https://github.com/initialstate/smart-scale
+# I modified code their code to implement USART between a
+# Raspberry Pi 3 and ATmega1284
+
 import collections
 import time
 import bluetooth
@@ -46,7 +50,7 @@ class EventProcessor:
                     self._sum += self._events[x]
                 self._weight = self._sum/WEIGHT_SAMPLES
                 self._measureCnt = 0
-                
+
                 if self._weight >= 80:
                     print str(self._weight) + " lbs"
                 elif self._weight == 0:
@@ -143,7 +147,7 @@ class Wiiboard:
                 self.processor.mass(self.createBoardEvent(data[2:12]))
             else:
                 print "ACK to data write received"
-        
+
         print("exited while loop in receive()")
 
 
