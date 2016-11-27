@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#/usr/bin/env python
 
 # Credits: https://github.com/initialstate/smart-scale
 # I modified code their code to implement USART between a
@@ -41,6 +41,20 @@ class EventProcessor:
         self._events = range(WEIGHT_SAMPLES)
 
     def mass(self, event):
+
+        lastRx = 0
+
+        port = serial.Serial("/dev/ttyS0", baudrate=9600, timeout=3.0) 
+        
+        if port.isOpen() == False:
+            port.open()
+
+
+#        if port.isOpen() == True:
+#            if port.inWaiting() > 0:
+#                lastRx = port.read()
+        
+
         if (event.totalWeight > 2):
             self._events[self._measureCnt] = event.totalWeight*2.20462
             self._measureCnt += 1
@@ -53,14 +67,27 @@ class EventProcessor:
 
                 if self._weight >= 80:
                     print str(self._weight) + " lbs"
-                elif self._weight == 0:
-                    print str("no one is on board")
+                        
+                    if port.isOpen():
+                        if port.inWaiting() > 0:
+                            print ("Sending trigger to turn off")
+                            port.write(chr(0x01))
                 else:
                     print str("you must be at least 80 lbs")
+
+                    if port.isOpen():
+                        if port.inWaiting() > 0:
+                            print ("sending trigger thats not good enough")
+                            port.write(chr(0x00))
                 if not self._measured:
                     self._measured = True
         else:
             print("No one is on the board, weight: %s") % event.totalWeight
+
+            if port.isOpen():
+                if port.inWaiting() > 0:
+                    print ("Sending trigger that no one is on board")
+                    port.write(chr(0x00))
 
     @property
     def weight(self):
