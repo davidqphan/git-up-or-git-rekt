@@ -23,6 +23,7 @@ enum led_states {INIT, WAIT, WAKEUP, READY} led_state;
 unsigned char led;		// PB4 (0/1) - (not present/present) on board
 unsigned char present;	// present flag sent from Pi
 unsigned char wake_up;	// time to wake up flag sent from Uno
+unsigned char trigger;  // flag sent from ATmega to Uno to turn off alarm
 
 #define RPI 0
 #define UNO 1
@@ -40,19 +41,26 @@ void TickFct() {
 			break;
 			
 		case WAIT:
+		
+			PORTA = 0x01;
 			if (USART_HasReceived(UNO)) {
 				wake_up = USART_Receive(UNO);
 			}
 			
 			if (wake_up == 0x01) {
+				led = 0x10;
 				led_state = WAKEUP;
 			}
 			else if (wake_up == 0x00) {
+				led = 0x00;
 				led_state = WAIT;
 			}			
 			break;
 		
 		case WAKEUP:
+		
+			PORTA = 0x02;
+				
 			USART_Send(wake_up, RPI);	
 
 			if (USART_HasReceived(RPI)) {
@@ -67,32 +75,43 @@ void TickFct() {
 				led = 0x00;
 				led_state = WAKEUP;
 			}
+			
 			break;
 			
 		case READY:
+		
+		
+			PORTA = 0x04;
 			if (USART_HasReceived(RPI)) {
 				present = USART_Receive(RPI);
 			}
 			
 			if (present == 0x01) {
 				led = 0x10;
+				trigger = 0x01;
+				USART_Send(trigger, UNO);
 				led_state = READY;
 			}
 			else if (present == 0x00) {
 				led = 0x00;
-				led_state = WAKEUP;
+				trigger = 0x00;
+				USART_Send(trigger, UNO);
+				led_state = READY;
 			}
 			break;
 		
 		default:
+			led_state = INIT;
 			break;
 	}
 	
 	switch (led_state) { // Actions
 		case INIT:
+			PORTA = 0x00;
 			break;
 		
 		case WAIT:
+			PORTB = led;
 			break;
 		
 		case WAKEUP:
@@ -126,6 +145,8 @@ int main(void) {
 	DDRB = 0xFD;	PORTB = 0x02;	// Distance sensor + LED
 	// DDRC = 0x00;	PORTC = 0xFF;	// IR receivers
 	initUSART(RPI);	initUSART(UNO);	// USART0 - pi_atmega	USART1 - atmega_uno
+	
+	DDRA = 0xFF;	PORTA = 0x00;	// debug state machines
 	
 	PulseFct(1);
 	vTaskStartScheduler();
