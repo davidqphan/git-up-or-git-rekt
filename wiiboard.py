@@ -42,18 +42,10 @@ class EventProcessor:
 
     def mass(self, event):
 
-        lastRx = 0
-
         port = serial.Serial("/dev/ttyS0", baudrate=9600, timeout=3.0) 
         
         if port.isOpen() == False:
             port.open()
-
-
-#        if port.isOpen() == True:
-#            if port.inWaiting() > 0:
-#                lastRx = port.read()
-        
 
         if (event.totalWeight > 2):
             self._events[self._measureCnt] = event.totalWeight*2.20462
