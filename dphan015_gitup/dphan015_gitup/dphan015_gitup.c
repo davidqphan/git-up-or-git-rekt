@@ -18,35 +18,78 @@
 #include "usart_ATmega1284.h"
 #include "distance.h"
 
-// Create State Machine enumeration here
-enum led_states {INIT, WAIT, WAKEUP, READY, DIST, PLAY} led_state;
 
 unsigned char led;		// PB4 (0/1) - (not present/present) on board
 unsigned char present;	// present flag sent from Pi
 unsigned char wake_up;	// time to wake up flag sent from Uno
 unsigned char trigger;  // flag sent from ATmega to Uno to turn off alarm
-unsigned char distance; // flag to allow scoring to count
+unsigned char dist;		// flag to allow scoring to count
 unsigned char ir_read;	// read from the IR receiver sensor
 
 unsigned short user_dist; // checks the distance of the user from the sensor
 
 #define RPI 0
 #define UNO 1
+#define DIST_PERIOD 50
 
-unsigned char check_dist() {
-	unsigned char flag = 0x00;
-	user_dist = PingIN();
-	if (user_dist >= 60) { // user is within legal distance
-		PORTB |= (1<<DIST_TRIGGER);
-		flag = 0x01;
-	}
-	else {
-		PORTB &= ~(1<<DIST_TRIGGER);
-		flag = 0x00;
-	}
-	return flag;
+// Create State Machine enumeration here
+enum led_states {INIT, WAIT, WAKEUP, PRESENT, PLAY} led_state;
+	
+enum dist_states {DIST_INIT, DIST_WAIT} dist_state;
+
+void Dist_InitFct() {
+	EnableDistance();
+	dist_state = DIST_INIT;
 }
 
+void Dist_TickFct() {
+	  unsigned char distance;
+	  const unsigned char THRESH = 15;  // distance to trigger demo LED
+	  const unsigned char LED_PIN = 5;  // LED pin for demo
+	  //Actions
+	  switch (dist_state) {
+		  case DIST_INIT:
+		  break;
+		  case DIST_WAIT:
+		  
+			if (present == 0x01) {
+				distance = PingCM();
+
+				if (distance >= THRESH) {
+					DIST_PORT |= (1<<LED_PIN);
+					dist = 0x01;
+				}
+				else {
+					DIST_PORT &= ~(1<<LED_PIN);
+					dist = 0x00;
+				} 
+			}
+		  break;
+		  default:
+		  break;
+	  }
+	  //Transitions
+	  switch (dist_state) {
+		  case DIST_INIT:
+		  dist_state = DIST_WAIT;
+		  break;
+		  case DIST_WAIT:
+		  break;
+		  default:
+		  dist_state = DIST_INIT;
+		  break;
+	  }
+}
+
+
+void Dist_TaskFct() {
+	Dist_InitFct();
+	for(;;)
+	{
+		Dist_TickFct();
+		vTaskDelay(DIST_PERIOD);
+	}
+}
 
 void InitFct() {
 	// Initialize State Machines here
@@ -54,165 +97,125 @@ void InitFct() {
 }
 
 void TickFct() {
-	
-	ir_read = ~PINC & 0x01;	
-	
+
+	ir_read = ~PINC & 0x01;
+
 	switch (led_state) { // transitions
 		case INIT:
 			led_state = WAIT;
 			break;
-			
+
 		case WAIT:
-		
+
 			PORTA = 0x01;
+			
 			if (USART_HasReceived(UNO)) {
 				wake_up = USART_Receive(UNO);
 			}
-			
+
 			if (wake_up == 0x01) {
 				led_state = WAKEUP;
 			}
 			else if (wake_up == 0x00) {
 				led_state = WAIT;
-			}			
+			}
 			break;
-		
+
 		case WAKEUP:
-		
+
 			PORTA = 0x02;
-				
-			USART_Send(wake_up, RPI);	
+
+			USART_Send(wake_up, RPI);
 
 			if (USART_HasReceived(RPI)) {
 				present = USART_Receive(RPI);
 			}
-			
+
 			if (present == 0x01) {
-				led_state = READY;
+				led_state = PRESENT;
 			}
 			else if (present == 0x00) {
 				led_state = WAKEUP;
 			}
-			
-			break;
-			
-		case READY:
-		
-		
-			PORTA = 0x04;
-			if (USART_HasReceived(RPI)) {
-				present = USART_Receive(RPI);
-			}
-			
-			if (present == 0x01) { // user is present on board
-	
-				distance = check_dist();
 
-				if (distance == 0x01) {
-					led_state = DIST;
-				}
-				else if (distance == 0x00) {
-					led_state = READY;
-				}
-				
-			}
-			else if (present == 0x00) {
-				led = 0x00;
-				led_state = WAKEUP;
-			}
-			
 			break;
+
+		case PRESENT:
+
+			PORTA = 0x04;
 			
-		case DIST:
-				
 			if (USART_HasReceived(RPI)) {
 				present = USART_Receive(RPI);
 			}
-						
+
 			if (present == 0x01) { // user is present on board
-							
-				distance = check_dist();
-							
-				if (distance == 0x01) {
+				if (dist == 0x01) {
 					led_state = PLAY;
 				}
-				else if (distance == 0x00) {
-					led_state = READY;
+				else if (dist == 0x00) {
+					led_state = PRESENT;
 				}
-							
+
 			}
 			else if (present == 0x00) {
-				led = 0x00;
 				led_state = WAKEUP;
 			}
-						
+
 			break;
-			
+
 		case PLAY:
+			PORTA = 0x08;
 			
 			if (USART_HasReceived(RPI)) {
 				present = USART_Receive(RPI);
 			}
-					
-			if (present == 0x01) { // user is present on board			
-				distance = check_dist();
-				if (distance == 0x01) {
-					
-					if (ir_read == 0x01) { // ball triggered the IR receiver
-						trigger = 0x01;	// tells UNO to turn off alarm clock	
-						USART_Send(trigger, UNO);
-						led_state = WAIT;
-					}
-					else {
-						trigger = 0x00;
-						USART_Send(trigger, UNO);
-						led_state = PLAY;
-					}
 
+			if (present == 0x01) { // user is present on board
+				if (dist == 0x01) {
 					
+					if (ir_read == 0x01) {
+						trigger = 0x01;
+						USART_Send(trigger, UNO);
+					}
+					else if (ir_read == 0x00) {
+						trigger = 0x00;
+					}
+					
+					led_state = PLAY;
 				}
-				else if (distance == 0x00) {
-					led_state = DIST;
+				else if (dist == 0x00) {
+					led_state = PRESENT;
 				}
-						
+
 			}
 			else if (present == 0x00) {
-				led = 0x00;
 				led_state = WAKEUP;
 			}
-					
-			break;	
-		
+
+
+			break;
+
 		default:
 			led_state = INIT;
 			break;
 	}
-	
+
 	switch (led_state) { // Actions
 		case INIT:
-			PORTA = 0x00;
 			break;
-		
+
 		case WAIT:
-			PORTA = 0x01;
 			break;
-		
+
 		case WAKEUP:
-			PORTA = 0x02;
 			break;
-		
-		case READY:
-			PORTA = 0x04;
-			break;
-			
-		case DIST:
-			PORTA = 0x10;
+
+		case PRESENT:
 			break;
 			
 		case PLAY:
-			PORTA = 0x20;
 			break;
-		
+
 		default:
 			break;
 	}
@@ -222,23 +225,24 @@ void TaskFct() {
 	InitFct();
 	while (1) {
 		TickFct();
-		vTaskDelay(1);
+		vTaskDelay(50);
 	}
 }
 
 void PulseFct(unsigned portBASE_TYPE Priority) {
 	// Create Tasks here
 	xTaskCreate(TaskFct, (signed portCHAR *)"TaskFct", configMINIMAL_STACK_SIZE, NULL, Priority, NULL );
+	//xTaskCreate(Dist_TaskFct, (signed portCHAR *)"Dist_TaskFct", configMINIMAL_STACK_SIZE, NULL, Priority, NULL );
 }
 
 int main(void) {
 	DDRA = 0xFF;	PORTA = 0x00;	// debug state machines
-	DDRB = 0xFD;	PORTB = 0x02;	// Distance sensor + LED
+	//DDRB = 0xFD;	PORTB = 0x02;	// Distance sensor + LED
 	DDRC = 0x00;	PORTC = 0xFF;	// IR receivers
 	initUSART(RPI);	initUSART(UNO);	// USART0 - pi_atmega	USART1 - atmega_uno
-	
+
 	PulseFct(1);
 	vTaskStartScheduler();
-	
+
 	return 0;
 }
