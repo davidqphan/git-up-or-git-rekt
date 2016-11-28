@@ -5,11 +5,6 @@
 #include <LiquidCrystal.h>
 
 #include "pitches.h"
-
-// Modified code to implement alarm clock + emit IR leds at 38KHz
-// Credits: http://www.instructables.com/id/DIY-Infrared-Proximity-Sensor-Arduino-Compatible
-// 	    http://www.electronicshub.org/arduino-alarm-clock/
-
 LiquidCrystal lcd(2, 9, 4, 5, 6, 7);
 RTC_DS1307 RTC;
 
@@ -23,25 +18,8 @@ int off=0;
 
 int Hor,Min,Sec;
 
-#define PIN_DETECT 2
-#define PIN_STATUS 13
-
-IRsend irsend;
 unsigned char wake_up = 0x00;
 unsigned char trigger = 0x00;
-
-void sendUpdate(int alarmState) {
-  if (alarmState == 1) {
-    Serial.write(wake_up);
-    Serial.println(wake_up);
-  }
-  else{
-    Serial.write(0x00);
-    Serial.println(0x00);
-  }
-}
-
-
 ///////////////////////////////////////Function to adjust the time//////////////////////////////////
 void time()
 {
@@ -195,7 +173,6 @@ void Buz()
   if(off==1) {
 
     for (int thisNote = 0; melody[thisNote]!=-1; thisNote++) {
-
       if(Serial.available()){
         trigger = Serial.read();
         Serial.print("trigger:");
@@ -210,7 +187,6 @@ void Buz()
         Serial.println(wake_up);
         int noteDuration = speed*noteDurations[thisNote];
         tone(11, melody[thisNote],noteDuration*.95);
-        
         delay(noteDuration);
         
         noTone(11);
@@ -219,6 +195,7 @@ void Buz()
       //Serial.write(wake_up);
     }
   }
+  trigger = 0x00;
 }
 
 
@@ -246,11 +223,7 @@ void setup()
 {
   Wire.begin();
   RTC.begin();
-  
-  pinMode(PIN_DETECT, INPUT);
-  pinMode(PIN_STATUS, OUTPUT);
-  irsend.enableIROut(38);
-  irsend.mark(0);
+ 
   
   lcd.begin(16,2);
   pinMode(inc, INPUT);
@@ -274,9 +247,9 @@ void setup()
 ////////////////////////////////////////////////////////////loop/////////////////////////////////////
 void loop()
 {
-  //digitalWrite(PIN_STATUS, !digitalRead(PIN_DETECT));
   DateTime now = RTC.now();
   if(digitalRead(set) == 0) {
+    
     current();
     time();
     delay(1000);
