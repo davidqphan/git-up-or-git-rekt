@@ -61,25 +61,22 @@ class EventProcessor:
                     print str(self._weight) + " lbs"
                         
                     if port.isOpen():
-                        if port.inWaiting() > 0:
-                            print ("Sending trigger to turn off")
-                            port.write(chr(0x01))
+                        print ("Sending trigger to turn off")
+                        port.write(chr(0x01))
                 else:
                     print str("you must be at least 80 lbs")
 
                     if port.isOpen():
-                        if port.inWaiting() > 0:
-                            print ("sending trigger thats not good enough")
-                            port.write(chr(0x00))
+                        print ("sending trigger thats not good enough")
+                        port.write(chr(0x00))
                 if not self._measured:
                     self._measured = True
         else:
             print("No one is on the board, weight: %s") % event.totalWeight
 
             if port.isOpen():
-                if port.inWaiting() > 0:
-                    print ("Sending trigger that no one is on board")
-                    port.write(chr(0x00))
+                print ("Sending trigger that no one is on board")
+                port.write(chr(0x00))
 
     @property
     def weight(self):
