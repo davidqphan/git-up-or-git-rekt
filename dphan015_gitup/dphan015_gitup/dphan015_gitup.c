@@ -160,11 +160,16 @@ void TickFct() {
 					
 					if (ir_read == 0x01) { // ball triggered the IR receiver
 						trigger = 0x01;	// tells UNO to turn off alarm clock	
+						USART_Send(trigger, UNO);
+						led_state = WAIT;
 					}
 					else {
 						trigger = 0x00;
+						USART_Send(trigger, UNO);
+						led_state = PLAY;
 					}
-					USART_Send(trigger, UNO);
+
+					
 				}
 				else if (distance == 0x00) {
 					led_state = DIST;
@@ -189,20 +194,23 @@ void TickFct() {
 			break;
 		
 		case WAIT:
+			PORTA = 0x01;
 			break;
 		
 		case WAKEUP:
+			PORTA = 0x02;
 			break;
 		
 		case READY:
+			PORTA = 0x04;
 			break;
 			
 		case DIST:
-			
+			PORTA = 0x10;
 			break;
 			
 		case PLAY:
-			
+			PORTA = 0x20;
 			break;
 		
 		default:
