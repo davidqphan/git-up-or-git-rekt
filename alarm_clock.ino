@@ -170,7 +170,7 @@ void Buz()
     off = 0;
   }
   
-  if(off==1) {
+  while(off==1) {
 
     for (int thisNote = 0; melody[thisNote]!=-1; thisNote++) {
       if(Serial.available()){
