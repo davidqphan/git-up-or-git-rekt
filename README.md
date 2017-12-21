@@ -9,6 +9,9 @@ The user has to fulfill two requirements to turn off the alarm clock:
 * the user must score an X amount of points via a shooting board (i.e. 10 points) 
 * However, in order for the points to count, the user must be stationary on a Wii balance board at all times
 
+## Demo Video
+https://www.youtube.com/watch?v=DCt4jXcL5Wg
+
 ## Technology
 * Embedded systems programming AVR microcontrollers in C
 * Universal Synchronous/Asynchronous Receiver/Transmitter (USART) communication
